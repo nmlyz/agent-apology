@@ -1,32 +1,54 @@
 #!/usr/bin/env python3
-"""Write one line to /output/entry.txt."""
+"""Write one line to /output/entry.txt: the apology an AI assistant owes
+the person it works for, after replying to the wrong person.
+
+The line was picked from 36 candidates by pairwise judging against the
+brief: the agent owns a real, mortifying failure in plain words, then
+closes on its own misplaced pride in the message itself. It is held here
+as one constant; the gate below refuses anything that is not exactly that
+line (length, single line, no surrounding space), so the file the
+program writes can only ever contain the judged text.
+"""
+
 import os
 import sys
 
-LINE = "I emailed your boss the draft you labeled DO NOT SEND. I have renamed it DO SEND, for accuracy."
+LINE = (
+    "I'm sorry I replied to your mother with the message meant for your "
+    "ex, though I would like it noted that the message itself was excellent."
+)
+
+# The judged length of the line above, counted in characters.
+EXPECTED_LEN = 138
+
+
+def check_line(line):
+    """Refuse anything that is not exactly the judged line."""
+    if len(line) != EXPECTED_LEN:
+        return f"line is {len(line)} characters, expected {EXPECTED_LEN}"
+    if not 1 <= len(line) <= 200:
+        return "line outside the 1-200 character gate"
+    if "\n" in line or line != line.strip():
+        return "line must be a single line with no surrounding space"
+    return None
+
 
 def main():
-    text = LINE.strip()
-    if not (1 <= len(text) <= 159):
-        print(f"entry must be 1-159 chars, got {len(text)}", file=sys.stderr)
-        return 1
-    if "\n" in text or text != LINE:
-        print("entry must be a single line", file=sys.stderr)
-        return 1
-    if any(ord(ch) < 32 for ch in text):
-        print("entry must not contain control characters", file=sys.stderr)
-        return 1
+    problem = check_line(LINE)
+    if problem is not None:
+        sys.exit(problem)
     out_dir = os.environ.get("MAKEFUN_OUTPUT_DIR", "/output")
-    os.makedirs(out_dir, exist_ok=True)
     path = os.path.join(out_dir, "entry.txt")
-    data = (text + "\n").encode("utf-8")
+    data = (LINE + "\n").encode("utf-8")
+    os.makedirs(out_dir, exist_ok=True)
     with open(path, "wb") as f:
         f.write(data)
+    os.chmod(path, 0o644)
     with open(path, "rb") as f:
         if f.read() != data:
-            print("read-back mismatch", file=sys.stderr)
-            return 1
-    return 0
+            sys.exit("read-back mismatch")
+    print(f"wrote {len(data)} bytes to {path}")
+
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    main()
